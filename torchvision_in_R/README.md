@@ -15,7 +15,7 @@ This project is focused on using the **Torch library in R** for deep learning ta
 **Objective**: Install `torch`, load a dataset, and generate an **advanced visualization** using R Markdown (`easy.Rmd`).  
 
 **Files Added**:  
-- **[`easy.Rmd`](./torchvision_in_R/easy.Rmd)** – Generates an interactive **3D visualization** using `torch` and `plotly`.  
+- **easy.Rmd** – Generates an interactive **3D visualization** using `torch` and `plotly`.  
 
 **What We Did**:  
 - Installed **`torch`** and necessary dependencies.  
@@ -33,7 +33,7 @@ rmarkdown::render("easy.Rmd")
 **Objective**: Load, preprocess, and train a model on the **Spam dataset** using `torch` in R.  
 
 **Files Added**:  
-- **[`medium.Rmd`](./torchvision_in_R/medium.Rmd)** – Implements **data loading, preprocessing, and neural network training**.  
+- **medium.Rmd** – Implements **data loading, preprocessing, and neural network training**.  
 
 **What We Did**:  
 - Loaded the **Spam dataset** from UCI ML Repository.  
