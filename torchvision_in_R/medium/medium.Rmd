@@ -1,0 +1,160 @@
+---
+title: "medium"
+author: "Akanksha Koshti"
+date: "2025-03-07"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install required packages 
+# install.packages(c("torch", "readr", "dplyr"))
+
+# Load required libraries
+library(torch)
+library(magrittr)
+library(coro)
+
+```
+
+```{r}
+# URL of the dataset
+spam_url = "https://hastie.su.domains/ElemStatLearn/datasets/spam.data"
+
+# Load data 
+spam_data = read.table(spam_url, header = FALSE)
+
+# View dataset structure
+print(dim(spam_data))  
+print(head(spam_data))
+
+# Convert to matrix
+data_matrix = as.matrix(spam_data[, -ncol(spam_data)])  
+labels = as.numeric(spam_data[, ncol(spam_data)]) + 1  # Shift all labels up by 1
+
+# Normalize data (zero mean, unit variance)
+data_mean = colMeans(data_matrix)
+data_sd = apply(data_matrix, 2, sd)
+data_matrix = scale(data_matrix, center = data_mean, scale = data_sd)
+
+# Convert to torch tensors
+data_tensor = torch_tensor(data_matrix, dtype = torch_float())
+labels_tensor = torch_tensor(labels, dtype = torch_long())  
+```
+
+```{r}
+# Define a dataset class for Spam Data
+spam_dataset = dataset(
+  name = "SpamDataset",
+  
+  initialize = function(x, y) {
+    self$data = x  # Ensure it's a tensor
+    self$labels = y  # Ensure labels are tensors
+  },
+  
+  .getitem = function(index) {
+    list(
+      x = self$data[index, ],  # Ensure features remain a tensor
+      y = self$labels[index]  # Labels remain a tensor
+    )
+  },
+  
+  .length = function() {
+    self$data$shape[1]  # Returns number of samples
+  }
+)
+
+# Initialize the dataset with torch tensors
+dataset = spam_dataset(data_tensor, labels_tensor)
+
+# Print dataset details
+cat("Dataset length:", dataset$.length(), "\n")
+
+# Print a sample to verify structure
+print(dataset$.getitem(1))
+```
+
+```{r}
+# Split into training (80%) and testing (20%)
+# Define batch size and dataloader
+batch_size = 32
+dataloader = dataloader(dataset, batch_size = batch_size, shuffle = TRUE)
+```
+
+
+```{r}
+net = nn_module(
+  "SpamNet",
+  initialize = function() {
+    self$fc1 = nn_linear(ncol(data_matrix), 128)  # More neurons
+    self$fc2 = nn_linear(128, 64)
+    self$fc3 = nn_linear(64, 2)  # Output layer (2 classes)
+    self$dropout = nn_dropout(p = 0.3)  # Dropout for regularization
+  },
+  
+  forward = function(x) {
+    x %>% 
+      self$fc1() %>% 
+      nnf_relu() %>% 
+      self$dropout() %>%
+      self$fc2() %>% 
+      nnf_relu() %>% 
+      self$dropout() %>%
+      self$fc3() %>% 
+      nnf_log_softmax(dim = 1)  # Apply log-softmax for classification
+  }
+)
+
+# Initialize model
+model = net()
+
+# Define optimizer (SGD with learning rate)
+optimizer = optim_adam(model$parameters, lr = 0.001)
+```
+
+```{r}
+num_epochs = 20  # More epochs for better learning
+
+for (epoch in 1:num_epochs) {
+  losses = c()
+
+  coro::loop(for (batch in dataloader) {
+    optimizer$zero_grad()  # Reset gradients
+
+    output = model(batch$x)  # Forward pass
+    loss = nnf_nll_loss(output, batch$y)  # Compute loss
+
+    loss$backward()  # Backpropagation
+    optimizer$step()  # Update model parameters
+
+    losses = c(losses, loss$item())  # Store loss for reporting
+  })
+  
+  # Print loss for each epoch
+  cat(sprintf("Epoch %d: Loss = %.4f\n", epoch, mean(losses)))
+}
+```
+
+---
+
+## **R Markdown**
+
+## Steps Involved
+1. Dataset Loading: Downloaded and processed the Spam dataset from the UCI ML Repository.
+2. Data Preprocessing:
+- Converted it into a matrix.
+- Applied normalization (zero mean, unit variance).
+- Converted it into torch tensors.
+3. Dataset Handling: Implemented a custom dataset class (spam_dataset) for structured data processing.
+4. Batch Processing: Used torch dataloaders to efficiently load batches.
+5. Model Training:
+- Implemented a 3-layer neural network with:
+- ReLU activations.
+- Dropout for regularization.
+- Log-softmax for classification.
+- Optimized with Adam optimizer.
+- Trained for 20 epochs, tracking the loss.
+
+---
